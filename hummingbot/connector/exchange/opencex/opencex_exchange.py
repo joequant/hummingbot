@@ -10,7 +10,6 @@ from hummingbot.connector.exchange.opencex import opencex_web_utils as web_utils
 from hummingbot.connector.exchange.opencex.opencex_api_order_book_data_source import OpencexAPIOrderBookDataSource
 from hummingbot.connector.exchange.opencex.opencex_api_user_stream_data_source import OpencexAPIUserStreamDataSource
 from hummingbot.connector.exchange.opencex.opencex_auth import OpencexAuth
-from hummingbot.connector.exchange.opencex.opencex_utils import is_exchange_information_valid
 from hummingbot.connector.exchange_py_base import ExchangePyBase
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.connector.utils import combine_to_hb_trading_pair
@@ -39,13 +38,13 @@ class OpencexExchange(ExchangePyBase):
         trading_pairs: Optional[List[str]] = None,
         trading_required: bool = True,
     ):
-        self.host = opencex_host
+        self.opencex_host = opencex_host
         self.opencex_api_key = opencex_api_key
         self.opencex_secret_key = opencex_secret_key
         self._trading_pairs = trading_pairs
         self._trading_required = trading_required
         self._account_id = ""
-        super().__init__(client_config_map=client_config_map)
+        super().__init__(client_config_map)
 
     @property
     def name(self) -> str:
@@ -63,7 +62,7 @@ class OpencexExchange(ExchangePyBase):
 
     @property
     def domain(self):
-        return f'https://{self.host}'
+        return self.opencex_host
 
     @property
     def client_order_id_max_length(self):
@@ -182,27 +181,29 @@ class OpencexExchange(ExchangePyBase):
         return fee
 
     async def _update_balances(self):
+        print("updating balance")
         new_available_balances = {}
         new_balances = {}
         balances = await self._api_get(
             path_url=CONSTANTS.ACCOUNT_BALANCE_URL,
             is_auth_required=True
         )
-
+        print(balances)
         for currency, balance_entry in balances.items():
-            asset_name = balance_entry["currency"].upper()
-            balance = Decimal(balance_entry["actual"])
-            if balance == s_decimal_0:
+            asset_name = currency.upper()
+            actual = balance_entry["actual"]
+            orders = balance_entry["orders"]
+            if actual + orders == 0.0:
                 continue
             if asset_name not in new_available_balances:
                 new_available_balances[asset_name] = s_decimal_0
             if asset_name not in new_balances:
                 new_balances[asset_name] = s_decimal_0
 
-            new_balances[asset_name] = balance
-            orders = Decimal(balance_entry["orders"])
-            new_available_balances[asset_name] = balance - orders
-
+            new_balances[asset_name] = Decimal(actual + orders)
+            new_available_balances[asset_name] = Decimal(actual)
+        print(new_available_balances)
+        print(new_balances)
         self._account_available_balances = new_available_balances
         self._account_balances = new_balances
 
@@ -421,9 +422,10 @@ class OpencexExchange(ExchangePyBase):
 
     def _initialize_trading_pair_symbols_from_exchange_info(self, exchange_info: Dict[str, Any]):
         mapping = bidict()
-        for symbol_data in filter(is_exchange_information_valid, exchange_info.get("data", [])):
-            mapping[symbol_data["symbol"]] = combine_to_hb_trading_pair(
-                base=symbol_data["bc"].upper(), quote=symbol_data["qc"].upper()
+        for symbol_data in exchange_info.get("data", {}).keys():
+            [base, quote] = symbol_data.split("_")
+            mapping[symbol_data] = combine_to_hb_trading_pair(
+                base=base.upper(), quote=quote.upper()
             )
 
         self._set_trading_pair_symbol_map(mapping)
@@ -437,3 +439,6 @@ class OpencexExchange(ExchangePyBase):
         )
         resp_record = resp_json["tick"]["data"][0]
         return float(resp_record["price"])
+
+    async def _api_request_url(self, path_url: str, is_auth_required: bool = False) -> str:
+        return f'https://{self.opencex_host}{path_url}'

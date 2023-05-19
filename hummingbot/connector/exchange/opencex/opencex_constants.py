@@ -16,7 +16,7 @@ WS_HEARTBEAT_TIME_INTERVAL = 5  # seconds
 TRADE_CHANNEL_SUFFIX = "trade.detail"
 ORDERBOOK_CHANNEL_SUFFIX = "depth.step0"
 
-TRADE_INFO_URL = "/api/public/v1/settings/common/market-symbols"
+TRADE_INFO_URL = "/api/public/v1/summary"
 MOST_RECENT_TRADE_URL = "/market/tickers"
 DEPTH_URL = "/market/depth"
 LAST_TRADE_URL = "/market/trade"
@@ -40,7 +40,6 @@ OPENCEX_SUBSCRIBE_TOPICS = {OPENCEX_ORDER_UPDATE_TOPIC, OPENCEX_ACCOUNT_UPDATE_T
 WS_CONNECTION_LIMIT_ID = "WSConnection"
 WS_REQUEST_LIMIT_ID = "WSRequest"
 CANCEL_URL_LIMIT_ID = "cancelRequest"
-ACCOUNT_BALANCE_LIMIT_ID = "accountBalance"
 ORDER_DETAIL_LIMIT_ID = "orderDetail"
 ORDER_MATCHES_LIMIT_ID = "orderMatch"
 
@@ -53,7 +52,7 @@ RATE_LIMITS = [
     RateLimit(limit_id=LAST_TRADE_URL, limit=10, time_interval=1),
     RateLimit(limit_id=SERVER_TIME_URL, limit=10, time_interval=1),
     RateLimit(limit_id=ACCOUNT_ID_URL, limit=100, time_interval=2),
-    RateLimit(limit_id=ACCOUNT_BALANCE_LIMIT_ID, limit=100, time_interval=2),
+    RateLimit(limit_id=ACCOUNT_BALANCE_URL, limit=100, time_interval=2),
     RateLimit(limit_id=ORDER_DETAIL_LIMIT_ID, limit=50, time_interval=2),
     RateLimit(limit_id=ORDER_MATCHES_LIMIT_ID, limit=50, time_interval=2),
     RateLimit(limit_id=PLACE_ORDER_URL, limit=100, time_interval=2),

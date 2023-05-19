@@ -3,7 +3,6 @@ import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import hummingbot.connector.exchange.opencex.opencex_constants as CONSTANTS
-from hummingbot.connector.exchange.opencex.opencex_web_utils import public_rest_url
 from hummingbot.core.data_type.common import TradeType
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 from hummingbot.core.data_type.order_book_tracker_data_source import OrderBookTrackerDataSource
@@ -95,7 +94,7 @@ class OpencexAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     async def _request_new_orderbook_snapshot(self, trading_pair: str) -> Dict[str, Any]:
         rest_assistant = await self._api_factory.get_rest_assistant()
-        url = public_rest_url(CONSTANTS.DEPTH_URL, domain=self._connector.domain)
+        url = self._connector._api_request_url(CONSTANTS.DEPTH_URL)
         exchange_symbol = await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
         # when type is set to "step0", the default value of "depth" is 150
         params: Dict = {"symbol": exchange_symbol, "type": "step0"}

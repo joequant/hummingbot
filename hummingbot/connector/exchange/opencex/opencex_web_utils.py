@@ -9,14 +9,6 @@ from hummingbot.core.web_assistant.rest_pre_processors import RESTPreProcessorBa
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 
 
-def public_rest_url(path_url: str, domain: str = None) -> str:
-    return domain + path_url
-
-
-def private_rest_url(path_url: str, domain: str = None) -> str:
-    return public_rest_url(path_url=path_url, domain=domain)
-
-
 class OpencexRESTPreProcessor(RESTPreProcessorBase):
 
     async def pre_process(self, request: RESTRequest) -> RESTRequest:

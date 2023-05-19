@@ -14,14 +14,19 @@ class OpencexAuth(AuthBase):
         self.time_provider = time_provider
 
     async def rest_authenticate(self, request: RESTRequest) -> RESTRequest:
+        headers = {}
+        if request.headers is not None:
+            headers.update(request.headers)
         auth_params = self.generate_auth_params_for_REST(request=request)
-        request.params = auth_params
+        headers.update(auth_params)
+        request.headers = headers
         return request
 
     async def ws_authenticate(self, request: WSJSONRequest) -> WSJSONRequest:
         return request  # pass-through
 
     def generate_auth_params_for_REST(self, request: RESTRequest) -> Dict[str, Any]:
+        print("generating signature")
         nonce = str(int(round(self.time_provider.time() * 1000)))
         params = request.params or {}
         signature = self.generate_signature(
@@ -45,4 +50,5 @@ class OpencexAuth(AuthBase):
                            nonce: str
                            ) -> str:
         message = api_key + nonce
+        print("generating signature")
         return hmac.new(self.secret_key.encode("utf8"), message.encode("utf8"), hashlib.sha256).hexdigest().upper()
