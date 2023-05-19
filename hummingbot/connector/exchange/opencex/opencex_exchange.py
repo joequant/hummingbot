@@ -7,9 +7,9 @@ from bidict import bidict
 import hummingbot.connector.exchange.opencex.opencex_constants as CONSTANTS
 from hummingbot.connector.constants import s_decimal_0, s_decimal_NaN
 from hummingbot.connector.exchange.opencex import opencex_web_utils as web_utils
-from hummingbot.connector.exchange.opencex.opencex_api_order_book_data_source import OpenCEXAPIOrderBookDataSource
-from hummingbot.connector.exchange.opencex.opencex_api_user_stream_data_source import OpenCEXAPIUserStreamDataSource
-from hummingbot.connector.exchange.opencex.opencex_auth import OpenCEXAuth
+from hummingbot.connector.exchange.opencex.opencex_api_order_book_data_source import OpencexAPIOrderBookDataSource
+from hummingbot.connector.exchange.opencex.opencex_api_user_stream_data_source import OpencexAPIUserStreamDataSource
+from hummingbot.connector.exchange.opencex.opencex_auth import OpencexAuth
 from hummingbot.connector.exchange.opencex.opencex_utils import is_exchange_information_valid
 from hummingbot.connector.exchange_py_base import ExchangePyBase
 from hummingbot.connector.trading_rule import TradingRule
@@ -26,18 +26,20 @@ if TYPE_CHECKING:
     from hummingbot.client.config.config_helpers import ClientConfigAdapter
 
 
-class OpenCEXExchange(ExchangePyBase):
+class OpencexExchange(ExchangePyBase):
 
     web_utils = web_utils
 
     def __init__(
         self,
         client_config_map: "ClientConfigAdapter",
+        opencex_host: str,
         opencex_api_key: str,
         opencex_secret_key: str,
         trading_pairs: Optional[List[str]] = None,
         trading_required: bool = True,
     ):
+        self.host = opencex_host
         self.opencex_api_key = opencex_api_key
         self.opencex_secret_key = opencex_secret_key
         self._trading_pairs = trading_pairs
@@ -51,7 +53,7 @@ class OpenCEXExchange(ExchangePyBase):
 
     @property
     def authenticator(self):
-        return OpenCEXAuth(
+        return OpencexAuth(
             api_key=self.opencex_api_key, secret_key=self.opencex_secret_key, time_provider=self._time_synchronizer
         )
 
@@ -61,7 +63,7 @@ class OpenCEXExchange(ExchangePyBase):
 
     @property
     def domain(self):
-        return CONSTANTS.DOMAIN
+        return f'https://{self.host}'
 
     @property
     def client_order_id_max_length(self):
@@ -143,12 +145,12 @@ class OpenCEXExchange(ExchangePyBase):
         )
 
     def _create_order_book_data_source(self):
-        return OpenCEXAPIOrderBookDataSource(
+        return OpencexAPIOrderBookDataSource(
             trading_pairs=self.trading_pairs, connector=self, api_factory=self._web_assistants_factory
         )
 
     def _create_user_stream_data_source(self) -> UserStreamTrackerDataSource:
-        return OpenCEXAPIUserStreamDataSource(
+        return OpencexAPIUserStreamDataSource(
             opencex_auth=self._auth,
             trading_pairs=self._trading_pairs,
             connector=self,
@@ -179,44 +181,30 @@ class OpenCEXExchange(ExchangePyBase):
         )
         return fee
 
-    async def _update_account_id(self) -> str:
-        accounts = await self._api_get(path_url=CONSTANTS.ACCOUNT_ID_URL, is_auth_required=True)
-        try:
-            for account in accounts["data"]:
-                if account["state"] == "working" and account["type"] == "spot":
-                    self._account_id = str(account["id"])
-        except Exception:
-            raise ValueError(f"Unable to retrieve account id.\n{accounts['err-msg']}")
-
     async def _update_balances(self):
-
         new_available_balances = {}
         new_balances = {}
-        if not self._account_id:
-            await self._update_account_id()
-        data = await self._api_get(
-            path_url=CONSTANTS.ACCOUNT_BALANCE_URL.format(self._account_id),
-            is_auth_required=True,
-            limit_id=CONSTANTS.ACCOUNT_BALANCE_LIMIT_ID,
+        balances = await self._api_get(
+            path_url=CONSTANTS.ACCOUNT_BALANCE_URL,
+            is_auth_required=True
         )
-        balances = data.get("data", {}).get("list", [])
-        if len(balances) > 0:
-            for balance_entry in balances:
-                asset_name = balance_entry["currency"].upper()
-                balance = Decimal(balance_entry["balance"])
-                if balance == s_decimal_0:
-                    continue
-                if asset_name not in new_available_balances:
-                    new_available_balances[asset_name] = s_decimal_0
-                if asset_name not in new_balances:
-                    new_balances[asset_name] = s_decimal_0
 
-                new_balances[asset_name] += balance
-                if balance_entry["type"] == "trade":
-                    new_available_balances[asset_name] = balance
+        for currency, balance_entry in balances.items():
+            asset_name = balance_entry["currency"].upper()
+            balance = Decimal(balance_entry["actual"])
+            if balance == s_decimal_0:
+                continue
+            if asset_name not in new_available_balances:
+                new_available_balances[asset_name] = s_decimal_0
+            if asset_name not in new_balances:
+                new_balances[asset_name] = s_decimal_0
 
-            self._account_available_balances = new_available_balances
-            self._account_balances = new_balances
+            new_balances[asset_name] = balance
+            orders = Decimal(balance_entry["orders"])
+            new_available_balances[asset_name] = balance - orders
+
+        self._account_available_balances = new_available_balances
+        self._account_balances = new_balances
 
     async def _format_trading_rules(self, raw_trading_pair_info: List[Dict[str, Any]]) -> List[TradingRule]:
         trading_rules = []
@@ -397,8 +385,6 @@ class OpenCEXExchange(ExchangePyBase):
         path_url = CONSTANTS.PLACE_ORDER_URL
         side = trade_type.name.lower()
         order_type_str = "limit" if order_type is OrderType.LIMIT else "limit-maker"
-        if not self._account_id:
-            await self._update_account_id()
         exchange_symbol = await self.exchange_symbol_associated_to_pair(trading_pair)
         params = {
             "account-id": self._account_id,
@@ -419,7 +405,7 @@ class OpenCEXExchange(ExchangePyBase):
             exchange_order_id = str(creation_response["data"])
             return exchange_order_id, self.current_timestamp
         else:
-            raise ValueError(f"OpenCEX rejected the order {order_id} ({creation_response})")
+            raise ValueError(f"Opencex rejected the order {order_id} ({creation_response})")
 
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
         if tracked_order is None:

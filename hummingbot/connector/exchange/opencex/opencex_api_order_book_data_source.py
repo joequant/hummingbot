@@ -13,16 +13,16 @@ from hummingbot.core.web_assistant.ws_assistant import WSAssistant
 from hummingbot.logger import HummingbotLogger
 
 if TYPE_CHECKING:
-    from hummingbot.connector.exchange.opencex.opencex_exchange import OpenCEXExchange
+    from hummingbot.connector.exchange.opencex.opencex_exchange import OpencexExchange
 
 
-class OpenCEXAPIOrderBookDataSource(OrderBookTrackerDataSource):
+class OpencexAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     _logger: Optional[HummingbotLogger] = None
 
     def __init__(self,
                  trading_pairs: List[str],
-                 connector: 'OpenCEXExchange',
+                 connector: 'OpencexExchange',
                  api_factory: WebAssistantsFactory,
                  ):
         super().__init__(trading_pairs)
@@ -43,7 +43,7 @@ class OpenCEXAPIOrderBookDataSource(OrderBookTrackerDataSource):
     async def listen_for_order_book_snapshots(self, ev_loop: asyncio.AbstractEventLoop, output: asyncio.Queue):
         """
         Suppressing call to this function as the orderbook snapshots are handled by
-        listen_for_order_book_diffs() for OpenCEX
+        listen_for_order_book_diffs() for Opencex
         """
         pass
 
@@ -95,7 +95,7 @@ class OpenCEXAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     async def _request_new_orderbook_snapshot(self, trading_pair: str) -> Dict[str, Any]:
         rest_assistant = await self._api_factory.get_rest_assistant()
-        url = public_rest_url(CONSTANTS.DEPTH_URL)
+        url = public_rest_url(CONSTANTS.DEPTH_URL, domain=self._connector.domain)
         exchange_symbol = await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
         # when type is set to "step0", the default value of "depth" is 150
         params: Dict = {"symbol": exchange_symbol, "type": "step0"}

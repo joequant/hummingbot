@@ -5,11 +5,8 @@ from hummingbot.core.data_type.in_flight_order import OrderState
 
 EXCHANGE_NAME = "opencex"
 BROKER_ID = "AAc484720a"
-DOMAIN = ""
 MAX_CLIENT_ORDER_ID_LENGTH = 64
 
-
-REST_URL = "https://api.opencex.pro"
 WS_PUBLIC_URL = "wss://api.opencex.pro/ws"
 WS_PRIVATE_URL = "wss://api.opencex.pro/ws/v2"
 
@@ -19,20 +16,20 @@ WS_HEARTBEAT_TIME_INTERVAL = 5  # seconds
 TRADE_CHANNEL_SUFFIX = "trade.detail"
 ORDERBOOK_CHANNEL_SUFFIX = "depth.step0"
 
-TRADE_INFO_URL = "/v1/settings/common/market-symbols"
+TRADE_INFO_URL = "/api/public/v1/settings/common/market-symbols"
 MOST_RECENT_TRADE_URL = "/market/tickers"
 DEPTH_URL = "/market/depth"
 LAST_TRADE_URL = "/market/trade"
 
-SERVER_TIME_URL = "/v1/common/timestamp"
-ACCOUNT_ID_URL = "/v1/account/accounts"
-ACCOUNT_BALANCE_URL = "/v1/account/accounts/{}/balance"
-OPEN_ORDERS_URL = "/v1/order/openOrders"
-ORDER_DETAIL_URL = "/v1/order/orders/{}"
-ORDER_MATCHES_URL = "/v1/order/orders/{}/matchresults"
-PLACE_ORDER_URL = "/v1/order/orders/place"
-CANCEL_ORDER_URL = "/v1/order/orders/{}/submitcancel"
-BATCH_CANCEL_URL = "/v1/order/orders/batchcancel"
+SERVER_TIME_URL = "/api/public/v1/common/timestamp"
+ACCOUNT_ID_URL = "/api/public/v1/account/accounts"
+ACCOUNT_BALANCE_URL = "/api/public/v1/balance"
+OPEN_ORDERS_URL = "/api/public/v1/order/openOrders"
+ORDER_DETAIL_URL = "/api/public/v1/order/orders/{}"
+ORDER_MATCHES_URL = "/api/public/v1/order/orders/{}/matchresults"
+PLACE_ORDER_URL = "/api/public/v1/order/orders/place"
+CANCEL_ORDER_URL = "/api/public/v1/order/orders/{}/submitcancel"
+BATCH_CANCEL_URL = "/api/public/v1/order/orders/batchcancel"
 
 OPENCEX_ACCOUNT_UPDATE_TOPIC = "accounts.update#2"
 OPENCEX_ORDER_UPDATE_TOPIC = "orders#{}"

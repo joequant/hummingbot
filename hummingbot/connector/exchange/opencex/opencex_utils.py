@@ -28,12 +28,22 @@ def is_exchange_information_valid(exchange_info: Dict[str, Any]) -> bool:
     return False
 
 
-class OpenCEXConfigMap(BaseConnectorConfigMap):
+class OpencexConfigMap(BaseConnectorConfigMap):
     connector: str = Field(default="opencex", client_data=None)
+    opencex_host: SecretStr = Field(
+        default=...,
+        client_data=ClientFieldData(
+            prompt=lambda cm: "Enter your Opencex host",
+            is_secure=False,
+            is_connect_key=True,
+            prompt_on_new=True,
+        )
+    )
+
     opencex_api_key: SecretStr = Field(
         default=...,
         client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your OpenCEX API key",
+            prompt=lambda cm: "Enter your Opencex API key",
             is_secure=True,
             is_connect_key=True,
             prompt_on_new=True,
@@ -42,7 +52,7 @@ class OpenCEXConfigMap(BaseConnectorConfigMap):
     opencex_secret_key: SecretStr = Field(
         default=...,
         client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your OpenCEX secret key",
+            prompt=lambda cm: "Enter your Opencex secret key",
             is_secure=True,
             is_connect_key=True,
             prompt_on_new=True,
@@ -53,4 +63,4 @@ class OpenCEXConfigMap(BaseConnectorConfigMap):
         title = "opencex"
 
 
-KEYS = OpenCEXConfigMap.construct()
+KEYS = OpencexConfigMap.construct()

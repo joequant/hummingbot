@@ -2,7 +2,7 @@ import asyncio
 from typing import TYPE_CHECKING, List, Optional
 
 import hummingbot.connector.exchange.opencex.opencex_constants as CONSTANTS
-from hummingbot.connector.exchange.opencex.opencex_auth import OpenCEXAuth
+from hummingbot.connector.exchange.opencex.opencex_auth import OpencexAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.web_assistant.connections.data_types import WSJSONRequest, WSResponse
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
@@ -10,18 +10,18 @@ from hummingbot.core.web_assistant.ws_assistant import WSAssistant
 from hummingbot.logger import HummingbotLogger
 
 if TYPE_CHECKING:
-    from hummingbot.connector.exchange.opencex.opencex_exchange import OpenCEXExchange
+    from hummingbot.connector.exchange.opencex.opencex_exchange import OpencexExchange
 
 
-class OpenCEXAPIUserStreamDataSource(UserStreamTrackerDataSource):
+class OpencexAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
     _logger: Optional[HummingbotLogger] = None
 
-    def __init__(self, opencex_auth: OpenCEXAuth,
+    def __init__(self, opencex_auth: OpencexAuth,
                  trading_pairs: List[str],
-                 connector: 'OpenCEXExchange',
+                 connector: 'OpencexExchange',
                  api_factory: Optional[WebAssistantsFactory]):
-        self._auth: OpenCEXAuth = opencex_auth
+        self._auth: OpencexAuth = opencex_auth
         self._connector = connector
         self._api_factory = api_factory
         self._trading_pairs = trading_pairs
@@ -34,7 +34,7 @@ class OpenCEXAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
     async def _authenticate_client(self, ws: WSAssistant):
         """
-        Sends an Authentication request to OpenCEX's WebSocket API Server
+        Sends an Authentication request to Opencex's WebSocket API Server
         """
         try:
             ws_request: WSJSONRequest = WSJSONRequest(
