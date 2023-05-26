@@ -23,10 +23,11 @@ class OpencexAuth(AuthBase):
         return request
 
     async def ws_authenticate(self, request: WSJSONRequest) -> WSJSONRequest:
-        return request  # pass-through
+        auth_params = self.generate_auth_params_for_REST(request=request)
+        request.payload = {**(request.payload), **auth_params}
+        return request
 
     def generate_auth_params_for_REST(self, request: RESTRequest) -> Dict[str, Any]:
-        print("generating signature")
         nonce = str(int(round(self.time_provider.time() * 1000)))
         params = request.params or {}
         signature = self.generate_signature(
@@ -42,7 +43,18 @@ class OpencexAuth(AuthBase):
         return params
 
     def generate_auth_params_for_WS(self, request: WSJSONRequest) -> Dict[str, Any]:
-        pass
+        print("generating signature")
+        nonce = str(int(round(self.time_provider.time() * 1000)))
+        signature = self.generate_signature(
+            self.api_key,
+            self.secret_key,
+            nonce
+        )
+        return {
+            'api_key': self.api_key,
+            'signature': signature,
+            'nonce': nonce
+        }
 
     def generate_signature(self,
                            api_key: str,
@@ -50,5 +62,4 @@ class OpencexAuth(AuthBase):
                            nonce: str
                            ) -> str:
         message = api_key + nonce
-        print("generating signature")
         return hmac.new(self.secret_key.encode("utf8"), message.encode("utf8"), hashlib.sha256).hexdigest().upper()

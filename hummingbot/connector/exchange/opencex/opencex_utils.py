@@ -18,7 +18,7 @@ DEFAULT_FEES = TradeFeeSchema(
 
 class OpencexConfigMap(BaseConnectorConfigMap):
     connector: str = Field(default="opencex", client_data=None)
-    opencex_host: SecretStr = Field(
+    opencex_host: str = Field(
         default=...,
         client_data=ClientFieldData(
             prompt=lambda cm: "Enter your Opencex host",

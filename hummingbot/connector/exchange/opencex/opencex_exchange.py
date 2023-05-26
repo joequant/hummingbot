@@ -7,8 +7,9 @@ from bidict import bidict
 import hummingbot.connector.exchange.opencex.opencex_constants as CONSTANTS
 from hummingbot.connector.constants import s_decimal_0, s_decimal_NaN
 from hummingbot.connector.exchange.opencex import opencex_web_utils as web_utils
-from hummingbot.connector.exchange.opencex.opencex_api_order_book_data_source import OpencexAPIOrderBookDataSource
-from hummingbot.connector.exchange.opencex.opencex_api_user_stream_data_source import OpencexAPIUserStreamDataSource
+
+# from hummingbot.connector.exchange.opencex.opencex_api_order_book_data_source import OpencexAPIOrderBookDataSource
+# from hummingbot.connector.exchange.opencex.opencex_api_user_stream_data_source import OpencexAPIUserStreamDataSource
 from hummingbot.connector.exchange.opencex.opencex_auth import OpencexAuth
 from hummingbot.connector.exchange_py_base import ExchangePyBase
 from hummingbot.connector.trading_rule import TradingRule
@@ -144,18 +145,23 @@ class OpencexExchange(ExchangePyBase):
         )
 
     def _create_order_book_data_source(self):
+        return None
+        """
         return OpencexAPIOrderBookDataSource(
             trading_pairs=self.trading_pairs, connector=self, api_factory=self._web_assistants_factory
         )
+"""
 
     def _create_user_stream_data_source(self) -> UserStreamTrackerDataSource:
+        return None
+        """
         return OpencexAPIUserStreamDataSource(
             opencex_auth=self._auth,
             trading_pairs=self._trading_pairs,
             connector=self,
             api_factory=self._web_assistants_factory,
         )
-
+"""
     def _get_fee(
         self,
         base_currency: str,
