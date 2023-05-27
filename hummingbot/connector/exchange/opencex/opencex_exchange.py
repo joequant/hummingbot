@@ -7,20 +7,21 @@ from bidict import bidict
 import hummingbot.connector.exchange.opencex.opencex_constants as CONSTANTS
 from hummingbot.connector.constants import s_decimal_0, s_decimal_NaN
 from hummingbot.connector.exchange.opencex import opencex_web_utils as web_utils
-
-# from hummingbot.connector.exchange.opencex.opencex_api_order_book_data_source import OpencexAPIOrderBookDataSource
-# from hummingbot.connector.exchange.opencex.opencex_api_user_stream_data_source import OpencexAPIUserStreamDataSource
 from hummingbot.connector.exchange.opencex.opencex_auth import OpencexAuth
 from hummingbot.connector.exchange_py_base import ExchangePyBase
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.connector.utils import combine_to_hb_trading_pair
 from hummingbot.core.data_type.common import OrderType, TradeType
-from hummingbot.core.data_type.in_flight_order import InFlightOrder, OrderUpdate, TradeUpdate
+from hummingbot.core.data_type.in_flight_order import InFlightOrder, OrderState, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.trade_fee import TokenAmount, TradeFeeBase
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.utils.async_utils import safe_ensure_future
 from hummingbot.core.utils.estimate_fee import build_trade_fee
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
+
+# from hummingbot.connector.exchange.opencex.opencex_api_order_book_data_source import OpencexAPIOrderBookDataSource
+# from hummingbot.connector.exchange.opencex.opencex_api_user_stream_data_source import OpencexAPIUserStreamDataSource
+
 
 if TYPE_CHECKING:
     from hummingbot.client.config.config_helpers import ClientConfigAdapter
@@ -144,6 +145,7 @@ class OpencexExchange(ExchangePyBase):
             throttler=self._throttler, time_synchronizer=self._time_synchronizer, auth=self._auth
         )
 
+# TODO: API: WS only provides trade API and not order book API
     def _create_order_book_data_source(self):
         return None
         """
@@ -186,6 +188,7 @@ class OpencexExchange(ExchangePyBase):
         )
         return fee
 
+# updated
     async def _update_balances(self):
         print("updating balance")
         new_available_balances = {}
@@ -240,61 +243,70 @@ class OpencexExchange(ExchangePyBase):
                 self.logger().error(f"Error parsing the trading pair rule {info}. Skipping.", exc_info=True)
         return trading_rules
 
+# updated
     async def _all_trade_updates_for_order(self, order: InFlightOrder) -> List[TradeUpdate]:
         trade_updates = []
 
         if order.exchange_order_id is not None:
             exchange_order_id = int(order.exchange_order_id)
-            all_fills_response = await self._api_get(
+            trades_response = await self._api_get(
                 path_url=CONSTANTS.ORDER_MATCHES_URL.format(exchange_order_id),
-                is_auth_required=True,
-                limit_id=CONSTANTS.ORDER_MATCHES_LIMIT_ID,
+                is_auth_required=True
             )
-
-            for trade in all_fills_response.get("data", []):
+# TODO Fix fee and timestamps
+            for trade in trades_response.get("matches", []):
                 fee = TradeFeeBase.new_spot_fee(
                     fee_schema=self.trade_fee_schema(),
                     trade_type=order.trade_type,
-                    percent_token=trade["fee-currency"].upper(),
-                    flat_fees=[TokenAmount(amount=Decimal(trade["filled-fees"]), token=trade["fee-currency"].upper())],
+                    percent_token=0,
+                    flat_fees=[]
                 )
+# TODO: API: Would like to get fill timestamp
                 trade_update = TradeUpdate(
-                    trade_id=str(trade["trade-id"]),
+                    trade_id=str(trade["id"]),
                     client_order_id=order.client_order_id,
-                    exchange_order_id=str(trade["order-id"]),
+                    exchange_order_id=str(trades_response["id"]),
                     trading_pair=order.trading_pair,
                     fee=fee,
-                    fill_base_amount=Decimal(trade["filled-amount"]),
-                    fill_quote_amount=Decimal(trade["filled-amount"]) * Decimal(trade["price"]),
+                    fill_base_amount=Decimal(trade["quantity"]),
+                    fill_quote_amount=Decimal(trade["quantity"]) * Decimal(trade["price"]),
                     fill_price=Decimal(trade["price"]),
-                    fill_timestamp=trade["created-at"] * 1e-3,
+                    fill_timestamp=trades_response['updated'] * 1e-3
                 )
+
                 trade_updates.append(trade_update)
 
         return trade_updates
 
+# updated
     async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:
         exchange_order_id = await tracked_order.get_exchange_order_id()
         updated_order_data = await self._api_get(
             path_url=CONSTANTS.ORDER_DETAIL_URL.format(exchange_order_id),
-            is_auth_required=True,
-            limit_id=CONSTANTS.ORDER_DETAIL_LIMIT_ID,
+            is_auth_required=True
         )
 
-        if updated_order_data["status"] == "ok":
-            new_state = CONSTANTS.ORDER_STATE[updated_order_data["data"]["state"]]
+        new_state = OrderState.OPEN
+        if updated_order_data['state'] == 2:
+            if updated_order_data['quantity_left'] > 0.0:
+                new_state = OrderState.PARTIALLY_CANCELLED
+            else:
+                new_state = OrderState.CANCELLED
+        elif updated_order_data['executed']:
+            if updated_order_data['quantity_left'] > 0.0:
+                new_state = OrderState.PARTIALLY_FILLED
+            else:
+                new_state = OrderState.FILLED
 
-            order_update = OrderUpdate(
-                client_order_id=tracked_order.client_order_id,
-                exchange_order_id=exchange_order_id,
-                trading_pair=tracked_order.trading_pair,
-                update_timestamp=self.current_timestamp,
-                new_state=new_state,
-            )
+        order_update = OrderUpdate(
+            client_order_id=tracked_order.client_order_id,
+            exchange_order_id=exchange_order_id,
+            trading_pair=tracked_order.trading_pair,
+            update_timestamp=self.current_timestamp,
+            new_state=new_state,
+        )
 
-            return order_update
-        else:
-            raise ValueError(f"Erroneous order status response {updated_order_data}")
+        return order_update
 
     async def _iter_user_event_queue(self) -> AsyncIterable[Dict[str, Any]]:
         """
@@ -379,6 +391,7 @@ class OpencexExchange(ExchangePyBase):
     async def _update_trading_fees(self):
         pass
 
+# updated
     async def _place_order(
         self,
         order_id: str,
@@ -389,43 +402,48 @@ class OpencexExchange(ExchangePyBase):
         price: Decimal,
         **kwargs,
     ):
-        path_url = CONSTANTS.PLACE_ORDER_URL
-        side = trade_type.name.lower()
-        order_type_str = "limit" if order_type is OrderType.LIMIT else "limit-maker"
-        exchange_symbol = await self.exchange_symbol_associated_to_pair(trading_pair)
+        path_url: str = CONSTANTS.PLACE_ORDER_URL
+        side: Optional[int] = None
+        if trade_type == TradeType.BUY:
+            side = 0
+        elif trade_type == TradeType.SELL:
+            side = 1
+        else:
+            raise ValueError(f"Opencex rejected the order {order_id} (invalid trade type)")
+
+        exchange_symbol: str = await self.exchange_symbol_associated_to_pair(trading_pair)
         params = {
-            "account-id": self._account_id,
-            "amount": f"{amount}",
-            "client-order-id": order_id,
-            "symbol": exchange_symbol,
-            "type": f"{side}-{order_type_str}",
+            "type": 0,
+            "pair": exchange_symbol,
+            "quantity": amount,
+            "price": price,
+            "operation": side
         }
-        if order_type is OrderType.LIMIT or order_type is OrderType.LIMIT_MAKER:
-            params["price"] = f"{price}"
-        creation_response = await self._api_post(path_url=path_url, params=params, data=params, is_auth_required=True)
+
+        creation_response = await self._api_post(path_url=path_url, params=params, is_auth_required=True)
 
         if (
-            creation_response["status"] == "ok"
-            and creation_response["data"] is not None
-            and str(creation_response["data"]).isdecimal()
+            creation_response["id"] is not None
+            and str(creation_response["id"]).isdecimal()
         ):
-            exchange_order_id = str(creation_response["data"])
+            exchange_order_id = str(creation_response["id"])
             return exchange_order_id, self.current_timestamp
         else:
             raise ValueError(f"Opencex rejected the order {order_id} ({creation_response})")
 
+# updated
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
         if tracked_order is None:
             raise ValueError(f"Failed to cancel order - {order_id}. Order not found.")
         path_url = CONSTANTS.CANCEL_ORDER_URL.format(tracked_order.exchange_order_id)
-        params = {"order-id": str(tracked_order.exchange_order_id)}
-        response = await self._api_post(
-            path_url=path_url, params=params, data=params, limit_id=CONSTANTS.CANCEL_URL_LIMIT_ID, is_auth_required=True
+        response = await self._api_delete(
+            path_url=path_url, is_auth_required=True
         )
         if response.get("status") == "ok":
             return True
         return False
 
+# updated
     def _initialize_trading_pair_symbols_from_exchange_info(self, exchange_info: Dict[str, Any]):
         mapping = bidict()
         for symbol_data in exchange_info.get("data", {}).keys():
@@ -436,15 +454,14 @@ class OpencexExchange(ExchangePyBase):
 
         self._set_trading_pair_symbol_map(mapping)
 
+# Updated
     async def _get_last_traded_price(self, trading_pair: str) -> float:
-        path_url = CONSTANTS.MOST_RECENT_TRADE_URL
-        params = {"symbol": await self.exchange_symbol_associated_to_pair(trading_pair)}
+        path_url: str = CONSTANTS.MOST_RECENT_TRADE_URL
+        symbol: str = await self.exchange_symbol_associated_to_pair(trading_pair)
         resp_json = await self._api_get(
-            path_url=path_url,
-            params=params,
+            path_url=path_url.format(symbol)
         )
-        resp_record = resp_json["tick"]["data"][0]
-        return float(resp_record["price"])
+        return float(resp_json[0]["price"])
 
     async def _api_request_url(self, path_url: str, is_auth_required: bool = False) -> str:
         return f'https://{self.opencex_host}{path_url}'

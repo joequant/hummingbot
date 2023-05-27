@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List, Optional
 import hummingbot.connector.exchange.opencex.opencex_constants as CONSTANTS
 from hummingbot.connector.exchange.opencex.opencex_auth import OpencexAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
-from hummingbot.core.web_assistant.connections.data_types import WSJSONRequest, WSResponse
+from hummingbot.core.web_assistant.connections.data_types import WSJSONRequest
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.core.web_assistant.ws_assistant import WSAssistant
 from hummingbot.logger import HummingbotLogger
@@ -28,35 +28,11 @@ class OpencexAPIUserStreamDataSource(UserStreamTrackerDataSource):
         super().__init__()
 
     async def _connected_websocket_assistant(self) -> WSAssistant:
-        ws: WSAssistant = await self._api_factory.get_ws_assistant()
-        await ws.connect(ws_url=CONSTANTS.WS_PRIVATE_URL, ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
+        ws: WSAssistant = await self._api_factory.get_ws_assistant(
+            ws_url=f'wss://{self._connector.domain}{CONSTANTS.WS_PUBLIC_URL}',
+            ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL
+        )
         return ws
-
-    async def _authenticate_client(self, ws: WSAssistant):
-        """
-        Sends an Authentication request to Opencex's WebSocket API Server
-        """
-        try:
-            ws_request: WSJSONRequest = WSJSONRequest(
-                {
-                    "action": "req",
-                    "ch": "auth",
-                    "params": {},
-                }
-            )
-            auth_params = self._auth.generate_auth_params_for_WS(ws_request)
-            ws_request.payload['params'] = auth_params
-            await ws.send(ws_request)
-            resp: WSResponse = await ws.receive()
-            auth_response = resp.data
-            if auth_response.get("code", 0) != 200:
-                raise ValueError(f"User Stream Authentication Fail! {auth_response}")
-            self.logger().info("Successfully authenticated to user stream...")
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            self.logger().error(f"Error occurred authenticating websocket connection... Error: {str(e)}", exc_info=True)
-            raise
 
     async def _subscribe_topic(self, topic: str, websocket_assistant: WSAssistant):
         """

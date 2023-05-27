@@ -1,14 +1,14 @@
 # A single source of truth for constant variables related to the exchange
 
 from hummingbot.core.api_throttler.data_types import RateLimit
-from hummingbot.core.data_type.in_flight_order import OrderState
 
 EXCHANGE_NAME = "opencex"
 BROKER_ID = "AAc484720a"
 MAX_CLIENT_ORDER_ID_LENGTH = 64
 
-WS_PUBLIC_URL = "wss://api.opencex.pro/ws"
-WS_PRIVATE_URL = "wss://api.opencex.pro/ws/v2"
+
+WS_PUBLIC_URL = "/wsapi/v1/live_notifications"
+WS_PRIVATE_URL = "/wsapi/v1/live_notifications"
 
 WS_HEARTBEAT_TIME_INTERVAL = 5  # seconds
 
@@ -17,7 +17,7 @@ TRADE_CHANNEL_SUFFIX = "trade.detail"
 ORDERBOOK_CHANNEL_SUFFIX = "depth.step0"
 
 TRADE_INFO_URL = "/api/public/v1/summary"
-MOST_RECENT_TRADE_URL = "/market/tickers"
+MOST_RECENT_TRADE_URL = "/api/public/v1/trades/{}"
 DEPTH_URL = "/market/depth"
 LAST_TRADE_URL = "/market/trade"
 
@@ -26,9 +26,9 @@ ACCOUNT_ID_URL = "/api/public/v1/account/accounts"
 ACCOUNT_BALANCE_URL = "/api/public/v1/balance"
 OPEN_ORDERS_URL = "/api/public/v1/order/openOrders"
 ORDER_DETAIL_URL = "/api/public/v1/order/orders/{}"
-ORDER_MATCHES_URL = "/api/public/v1/order/orders/{}/matchresults"
-PLACE_ORDER_URL = "/api/public/v1/order/orders/place"
-CANCEL_ORDER_URL = "/api/public/v1/order/orders/{}/submitcancel"
+ORDER_MATCHES_URL = "/api/public/v1/order/orders/{}"
+PLACE_ORDER_URL = "/api/public/v1/order/{}"
+CANCEL_ORDER_URL = "/api/public/v1/order/{}"
 BATCH_CANCEL_URL = "/api/public/v1/order/orders/batchcancel"
 
 OPENCEX_ACCOUNT_UPDATE_TOPIC = "accounts.update#2"
@@ -60,15 +60,3 @@ RATE_LIMITS = [
     RateLimit(limit_id=BATCH_CANCEL_URL, limit=50, time_interval=2),
 
 ]
-
-# Order States
-ORDER_STATE = {
-    "rejected": OrderState.FAILED,
-    "canceled": OrderState.CANCELED,
-    "submitted": OrderState.OPEN,
-    "partial-filled": OrderState.PARTIALLY_FILLED,
-    "filled": OrderState.FILLED,
-    "partial-canceled": OrderState.CANCELED,
-    "created": OrderState.PENDING_CREATE,
-    "canceling": OrderState.PENDING_CANCEL
-}
