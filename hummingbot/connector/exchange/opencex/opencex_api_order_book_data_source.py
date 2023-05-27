@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import hummingbot.connector.exchange.opencex.opencex_constants as CONSTANTS
@@ -122,12 +121,18 @@ class OpencexAPIOrderBookDataSource(OrderBookTrackerDataSource):
             for trading_pair in self._trading_pairs:
                 exchange_symbol = await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
                 subscribe_orderbook_request: WSJSONRequest = WSJSONRequest({
-                    "sub": f"market.{exchange_symbol}.depth.step0",
-                    "id": str(uuid.uuid4())
+                    "command": CONSTANTS.OPENCEX_STACK_TOPIC,
+                    "params": {
+                        "precision": "0.01",
+                        "pair_name": exchange_symbol
+                    }
                 })
                 subscribe_trade_request: WSJSONRequest = WSJSONRequest({
-                    "sub": f"market.{exchange_symbol}.trade.detail",
-                    "id": str(uuid.uuid4())
+                    "command": CONSTANTS.OPENCEX_TRADE_TOPIC,
+                    "params": {
+                        "page": 1,
+                        "pair_name": exchange_symbol
+                    }
                 })
                 await ws.send(subscribe_orderbook_request)
                 await ws.send(subscribe_trade_request)

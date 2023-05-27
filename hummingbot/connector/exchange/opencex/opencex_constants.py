@@ -29,13 +29,15 @@ ORDER_DETAIL_URL = "/api/public/v1/order/orders/{}"
 ORDER_MATCHES_URL = "/api/public/v1/order/orders/{}"
 PLACE_ORDER_URL = "/api/public/v1/order/{}"
 CANCEL_ORDER_URL = "/api/public/v1/order/{}"
-BATCH_CANCEL_URL = "/api/public/v1/order/orders/batchcancel"
 
-OPENCEX_ACCOUNT_UPDATE_TOPIC = "accounts.update#2"
-OPENCEX_ORDER_UPDATE_TOPIC = "orders#{}"
-OPENCEX_TRADE_DETAILS_TOPIC = "trade.clearing#{}#0"
+OPENCEX_STACK_TOPIC = "add_stack"
+OPENCEX_TRADE_TOPIC = "add_trade"
+OPENCEX_BALANCE_TOPIC = "add_balance"
+OPENCEX_OPENED_ORDERS_TOPIC = "add_opened_orders"
+OPENCEX_CLOSED_ORDERS_TOPIC = "add_closed_orders"
+OPENCEX_EXECUTED_ORDERS = "add_executed_orders"
 
-OPENCEX_SUBSCRIBE_TOPICS = {OPENCEX_ORDER_UPDATE_TOPIC, OPENCEX_ACCOUNT_UPDATE_TOPIC, OPENCEX_TRADE_DETAILS_TOPIC}
+OPENCEX_SUBSCRIBE_TOPICS = {OPENCEX_STACK_TOPIC, OPENCEX_BALANCE_TOPIC, OPENCEX_TRADE_TOPIC}
 
 WS_CONNECTION_LIMIT_ID = "WSConnection"
 WS_REQUEST_LIMIT_ID = "WSRequest"
@@ -56,7 +58,5 @@ RATE_LIMITS = [
     RateLimit(limit_id=ORDER_DETAIL_LIMIT_ID, limit=50, time_interval=2),
     RateLimit(limit_id=ORDER_MATCHES_LIMIT_ID, limit=50, time_interval=2),
     RateLimit(limit_id=PLACE_ORDER_URL, limit=100, time_interval=2),
-    RateLimit(limit_id=CANCEL_URL_LIMIT_ID, limit=100, time_interval=2),
-    RateLimit(limit_id=BATCH_CANCEL_URL, limit=50, time_interval=2),
-
+    RateLimit(limit_id=CANCEL_URL_LIMIT_ID, limit=100, time_interval=2)
 ]

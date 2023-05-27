@@ -43,7 +43,7 @@ class OpencexAPIUserStreamDataSource(UserStreamTrackerDataSource):
         :param websocket_assistant: the websocket assistant used to connect to the exchange
         """
         try:
-            subscribe_request: WSJSONRequest = WSJSONRequest({"action": "sub", "ch": topic})
+            subscribe_request: WSJSONRequest = WSJSONRequest({"command": topic, "params": {}})
             await websocket_assistant.send(subscribe_request)
             self.logger().info(f"Subscribed to {topic}")
         except asyncio.CancelledError:
@@ -60,12 +60,13 @@ class OpencexAPIUserStreamDataSource(UserStreamTrackerDataSource):
         """
         try:
             await self._authenticate_client(websocket_assistant)
-            await self._subscribe_topic(CONSTANTS.OPENCEX_ACCOUNT_UPDATE_TOPIC, websocket_assistant)
+            await self._subscribe_topic(CONSTANTS.OPENCEX_BALANCE_TOPIC, websocket_assistant)
             for trading_pair in self._trading_pairs:
-                exchange_symbol = await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
-                await self._subscribe_topic(CONSTANTS.OPENCEX_TRADE_DETAILS_TOPIC.format(exchange_symbol),
+                await self._subscribe_topic(CONSTANTS.OPENCEX_ADD_OPENED_ORDERS_TOPIC,
                                             websocket_assistant)
-                await self._subscribe_topic(CONSTANTS.OPENCEX_ORDER_UPDATE_TOPIC.format(exchange_symbol),
+                await self._subscribe_topic(CONSTANTS.OPENCEX_ADD_CLOSED_ORDERS_TOPIC,
+                                            websocket_assistant)
+                await self._subscribe_topic(CONSTANTS.OPENCEX_ADD_EXECUTED_ORDERS_TOPIC,
                                             websocket_assistant)
         except asyncio.CancelledError:
             raise
